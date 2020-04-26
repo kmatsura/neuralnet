@@ -6,7 +6,7 @@ setup(
     description='compute neural network',
     author='Kengo Matsuura',
     author_email='kengo11141996(at)gmail.com',  # convert (at) to @
-    url='https://github.com/kmatsuuraHMC/neural_network',
+    url='https://github.com/kmatsuuraHMC/neuralnet',
     license=license,
     packages=find_packages(exclude=('tests', 'docs'))
 )
