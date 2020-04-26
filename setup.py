@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='nueral_network',
+    name='nueralnet',
     version='0.0.1',
     description='compute neural network',
     author='Kengo Matsuura',
