@@ -3,12 +3,38 @@ import random
 from pprint import pprint
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from collections import deque
 import gc
 import math
 import pickle
 import os
-# n = int(input())
 
+def main():
+    make_matrix([2, 4, 3, 1])
+
+def make_matrix(node_list):
+    '''
+    Make adjacent matrix of neural network from node list.
+    The head of the list must be the input vector dimensions and tail must be
+    the output.
+    '''
+    node_que = deque(node_list)
+    total_nodes = sum(node_que)
+    adjacent = np.zeros((total_nodes, total_nodes))  # make adjacent matrix
+
+    def insert_node(adjacent, node_que, row, string, pointer):
+        if node_que:
+            string = row
+            row = node_que.popleft()
+            adjacent[pointer[0]:pointer[0]+row, pointer[1]:pointer[1]+string]\
+                = np.ones((row, string))
+            pointer = (pointer[0]+row, pointer[1]+string)
+            return insert_node(adjacent, node_que, row, string, pointer)
+        else:
+            return adjacent
+    row = node_que.popleft()
+    adjacent = insert_node(adjacent, node_que, row, 0, (row, 0))
+    print(adjacent)
 
 
 def sample_learning():
@@ -44,7 +70,6 @@ def sample_learning():
         y_train, X_test, y_test, activate, activate_diff, outputdir)
 
 
-
 def graph_init():
     return graph_init
 
@@ -69,7 +94,8 @@ def run_iteration(epoch, graph_init, nodes_number, hidden_layer, X_train,
     graph, train_loss = learing_parameters(graph_init, nodes_number,
                                            hidden_layer, X_train, y_train,
                                            activate, activate_diff)
-    test_loss, y_test_pred = calc_test_loss(graph, X_test, y_test, nodes_number, hidden_layer, activate)
+    test_loss, y_test_pred = calc_test_loss(
+        graph, X_test, y_test, nodes_number, hidden_layer, activate)
     print("epoch:{0}, test loss:{1}, train loss:{2}".format(
         epoch+1, test_loss, train_loss))
     plot3d(X_test[0, :], X_test[1, :], y_test_pred,
@@ -276,4 +302,4 @@ def plot3d(x1, x2, y, filename):
 
 
 if __name__ == "__main__":
-    sample_learning()
+    main()
