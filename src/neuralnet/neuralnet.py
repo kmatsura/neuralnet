@@ -158,9 +158,9 @@ def learing_parameters(graph, node_list, X, y, activate,
                     pointer = (pointer[0]-row, pointer[1]-string)
                     graph[pointer[0]:pointer[0] + row, pointer[1]:pointer[1]
                           + string]\
-                        -= calc_back_prop(node_list, k, alpha, delta)
+                        -= calc_back_prop(node_list, k, alpha, delta, i, pointer)
     
-    def calc_back_prop(node_list, k, alpha, delta):
+    def calc_back_prop(node_list, k, alpha, delta, i, pointer):
         """
         calculate update parameter
         """
@@ -168,11 +168,17 @@ def learing_parameters(graph, node_list, X, y, activate,
         string = node_list[-(k+1)]
         same = alpha * 2 * delta
         update_matrix = np.zeros((row, string))
-        for i in range(k):
-            for r in range(row):
-                for s in range(string):
-                    update_matrix[r, s] = same * x_output_hist[4, i-1]
-        
+        for r in range(row):
+            for s in range(string):
+                if k == 0:
+                    update_matrix[r, s] += same * x_output_hist[pointer + s, i-1]
+                if k == 1:
+                    update_matrix[r, s]
+
+                        graph[4, 2] -= same * graph[6, 4] * \
+                activate_diff(
+                    x_tmp_hist[4, i-1]) * x_output_hist[2, i-2]
+            
         return update_matrix
                 
             graph[2, 0] -= same * (graph[6, 4]
