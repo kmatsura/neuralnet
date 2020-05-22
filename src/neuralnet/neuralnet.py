@@ -9,8 +9,34 @@ import math
 import pickle
 import os
 
+
 def main():
-    make_matrix([2, 4, 3, 1])
+    outputdir = "./result/sample_learning3/"
+    if not os.path.exists(outputdir):
+        os.mkdir(outputdir)
+    node_list = [2, 4, 3, 1]
+    adjacent = make_matrix(node_list)
+    nodes_number = sum(node_list)
+    hidden_layer = len(node_list) - 2
+    _graph = np.random.randn(nodes_number, nodes_number) * 2 - 1
+    graph_init = _graph * adjacent  # intilize edge
+    data_size = 1000
+    data = make_sample_data(data_size)
+    train_rate = 0.8
+    train_data = data[:, :int(data.shape[1]*train_rate)]
+    test_data = data[:, int(data.shape[1]*train_rate):]
+    X_train = train_data[0:2, :]
+    y_train = train_data[2, :]
+    X_test = test_data[0:2, :]
+    y_test = test_data[2, :]
+    plot3d(data[0, :], data[1, :], data[2, :], outputdir + "sample.png")
+    epoch = 100
+    activate = leaky_relu
+    activate_diff = leaky_relu_diff
+    run(epoch, graph_init, nodes_number, hidden_layer, X_train,
+        y_train, X_test, y_test, activate, activate_diff, outputdir)
+
+
 
 def make_matrix(node_list):
     '''
@@ -34,44 +60,7 @@ def make_matrix(node_list):
             return adjacent
     row = node_que.popleft()
     adjacent = insert_node(adjacent, node_que, row, 0, (row, 0))
-    print(adjacent)
-
-
-def sample_learning():
-    outputdir = "./result/sample_learning2/"
-    if not os.path.exists(outputdir):
-        os.mkdir(outputdir)
-    nodes_number = 7  # the number of nodes
-    hidden_layer = 2
-    _graph = np.random.randn(nodes_number, nodes_number) * 2 - 1
-    _adjacent = np.ones((nodes_number, nodes_number))
-    adjacent = np.tril(_adjacent, k=-1)  # adjacent matrix
-    #  make layers
-    adjacent[1, 0] = 0
-    adjacent[3, 2] = 0
-    adjacent[4:, 0:2] = np.zeros((3, 2))
-    adjacent[5, 4] = 0
-    adjacent[6, 2:4] = np.zeros(2)
-    graph_init = _graph * adjacent  # intilize edge
-    data_size = 1000
-    data = make_sample_data(data_size)
-    train_rate = 0.8
-    train_data = data[:, :int(data.shape[1]*train_rate)]
-    test_data = data[:, int(data.shape[1]*train_rate):]
-    X_train = train_data[0:2, :]
-    y_train = train_data[2, :]
-    X_test = test_data[0:2, :]
-    y_test = test_data[2, :]
-    plot3d(data[0, :], data[1, :], data[2, :], outputdir + "sample.png")
-    epoch = 100
-    activate = leaky_relu
-    activate_diff = leaky_relu_diff
-    run(epoch, graph_init, nodes_number, hidden_layer, X_train,
-        y_train, X_test, y_test, activate, activate_diff, outputdir)
-
-
-def graph_init():
-    return graph_init
+    return adjacent
 
 
 def run(epoch, graph_init, nodes_number, hidden_layer, X_train,
@@ -106,17 +95,17 @@ def run_iteration(epoch, graph_init, nodes_number, hidden_layer, X_train,
 def calc_test_loss(graph, X_test, y_test, nodes_number, hidden_layer, activate):
     X__test_padding = make_padding(X_test, nodes_number, hidden_layer)
     activate = np.vectorize(activate)
-    x_input = np.zeros((7, 1))  # initialize input vector
+    x_input = np.zeros((nodes_number, 1))  # initialize input vector
     test = len(y_test)
     y_test_pred = np.zeros(test)
     x__test_output_hist = np.zeros(X__test_padding.shape)
     x_test_tmp_hist = np.zeros(X__test_padding.shape)
     for j in range(test + hidden_layer):
-        x_input += X__test_padding[:, j].reshape(7, 1)
+        x_input += X__test_padding[:, j].reshape(nodes_number, 1)
         x_tmp = np.dot(graph, x_input)
-        x_test_tmp_hist[:, j] = x_tmp.reshape(7)
+        x_test_tmp_hist[:, j] = x_tmp.reshape(nodes_number)
         x_output = activate(x_tmp)
-        x__test_output_hist[:, j] = x_output.reshape(7)
+        x__test_output_hist[:, j] = x_output.reshape(nodes_number)
         x_input = x_output
         if j >= hidden_layer:
             y_test_pred[j-hidden_layer] = x_tmp[6, 0]
@@ -142,11 +131,11 @@ def learing_parameters(graph, nodes_number, hidden_layer, X, y, activate,
     x_input = np.zeros((graph.shape[0], 1))  # initialize input vector
     for i in range(sample + hidden_layer):
         pprint(graph)
-        x_input += X_padding[:, i].reshape(7, 1)
+        x_input += X_padding[:, i].reshape(nodes_number, 1)
         x_tmp = np.dot(graph, x_input)
-        x_tmp_hist[:, i] = x_tmp.reshape(7)
+        x_tmp_hist[:, i] = x_tmp.reshape(nodes_number)
         x_output = activate(x_tmp)
-        x_output_hist[:, i] = x_output.reshape(7)
+        x_output_hist[:, i] = x_output.reshape(nodes_number)
         x_input = x_output
         if i >= hidden_layer:
             y_use_pred[i-hidden_layer] = x_tmp[6, 0]
