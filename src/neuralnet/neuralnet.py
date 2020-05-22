@@ -8,6 +8,7 @@ import gc
 import math
 import pickle
 import os
+from activate import leaky_relu, leaky_relu_diff
 
 
 def main():
@@ -17,7 +18,6 @@ def main():
     node_list = [2, 4, 3, 1]
     adjacent = make_matrix(node_list)
     nodes_number = sum(node_list)
-    hidden_layer = len(node_list) - 2
     _graph = np.random.randn(nodes_number, nodes_number) * 2 - 1
     graph_init = _graph * adjacent  # intilize edge
     data_size = 1000
@@ -33,9 +33,8 @@ def main():
     epoch = 100
     activate = leaky_relu
     activate_diff = leaky_relu_diff
-    run(epoch, graph_init, nodes_number, hidden_layer, X_train,
+    run(epoch, graph_init, node_list, X_train,
         y_train, X_test, y_test, activate, activate_diff, outputdir)
-
 
 
 def make_matrix(node_list):
@@ -63,13 +62,15 @@ def make_matrix(node_list):
     return adjacent
 
 
-def run(epoch, graph_init, nodes_number, hidden_layer, X_train,
+def run(epoch, graph_init, node_list, X_train,
         y_train, X_test, y_test, activate, activate_diff, outputdir):
     train_loss_hist = []
     test_loss_hist = []
     for i in range(epoch):
-        train_loss, test_loss = run_iteration(i, graph_init, nodes_number, hidden_layer, X_train,
-                                              y_train, X_test, y_test, activate, activate_diff, outputdir)
+        train_loss, test_loss = run_iteration(i, graph_init, node_list,
+                                              X_train, y_train, X_test,
+                                              y_test, activate, activate_diff,
+                                              outputdir)
         train_loss_hist.append(train_loss)
         test_loss_hist.append(test_loss)
     with open('train_loss_hist.txt', 'wb') as f:
@@ -78,13 +79,12 @@ def run(epoch, graph_init, nodes_number, hidden_layer, X_train,
         pickle.dump(test_loss_hist, f)
 
 
-def run_iteration(epoch, graph_init, nodes_number, hidden_layer, X_train,
+def run_iteration(epoch, graph_init, node_list, X_train,
                   y_train, X_test, y_test, activate, activate_diff, outputdir):
-    graph, train_loss = learing_parameters(graph_init, nodes_number,
-                                           hidden_layer, X_train, y_train,
-                                           activate, activate_diff)
+    graph, train_loss = learing_parameters(graph_init, node_list, X_train,
+                                           y_train, activate, activate_diff)
     test_loss, y_test_pred = calc_test_loss(
-        graph, X_test, y_test, nodes_number, hidden_layer, activate)
+        graph, X_test, y_test, node_list, activate)
     print("epoch:{0}, test loss:{1}, train loss:{2}".format(
         epoch+1, test_loss, train_loss))
     plot3d(X_test[0, :], X_test[1, :], y_test_pred,
@@ -92,7 +92,9 @@ def run_iteration(epoch, graph_init, nodes_number, hidden_layer, X_train,
     return train_loss, test_loss
 
 
-def calc_test_loss(graph, X_test, y_test, nodes_number, hidden_layer, activate):
+def calc_test_loss(graph, X_test, y_test, node_list, activate):
+    nodes_number = sum(node_list)
+    hidden_layer = len(node_list) - 2
     X__test_padding = make_padding(X_test, nodes_number, hidden_layer)
     activate = np.vectorize(activate)
     x_input = np.zeros((nodes_number, 1))  # initialize input vector
@@ -113,8 +115,13 @@ def calc_test_loss(graph, X_test, y_test, nodes_number, hidden_layer, activate):
     return test_loss, y_test_pred
 
 
-def learing_parameters(graph, nodes_number, hidden_layer, X, y, activate,
+def learing_parameters(graph, node_list, X, y, activate,
                        activate_diff, alpha=0.01, sample=300):
+    """
+    Stochaostic Gradient Descent + back propagation
+    """
+    nodes_number = sum(node_list)
+    hidden_layer = len(node_list) - 2
     if sample > X.shape[1]:
         sample = X.shape[1]
     use_list = random.sample(list(range(X.shape[1])), sample)
@@ -136,12 +143,38 @@ def learing_parameters(graph, nodes_number, hidden_layer, X, y, activate,
         x_tmp_hist[:, i] = x_tmp.reshape(nodes_number)
         x_output = activate(x_tmp)
         x_output_hist[:, i] = x_output.reshape(nodes_number)
-        x_input = x_output
+        x_input = x_output  # go next layers
         if i >= hidden_layer:
-            y_use_pred[i-hidden_layer] = x_tmp[6, 0]
+            y_use_pred[i-hidden_layer] = x_tmp[(nodes_number-node_list):, 0]
             delta = y_use_pred[i-hidden_layer] - y_use[i-hidden_layer]
             #  update parameters
-            same = alpha * 2 * delta
+            pointer = (nodes_number, nodes_number - node_list[-1])
+            for k in range(len(node_list)):
+                if k == 0:
+                    continue
+                else:
+                    row = node_list[-k]
+                    string = node_list[-(k+1)]
+                    pointer = (pointer[0]-row, pointer[1]-string)
+                    graph[pointer[0]:pointer[0] + row, pointer[1]:pointer[1]
+                          + string]\
+                        -= calc_back_prop(node_list, k, alpha, delta)
+    
+    def calc_back_prop(node_list, k, alpha, delta):
+        """
+        calculate update parameter
+        """
+        row = node_list[-k]
+        string = node_list[-(k+1)]
+        same = alpha * 2 * delta
+        update_matrix = np.zeros((row, string))
+        for i in range(k):
+            for r in range(row):
+                for s in range(string):
+                    update_matrix[r, s] = same * x_output_hist[4, i-1]
+        
+        return update_matrix
+                
             graph[2, 0] -= same * (graph[6, 4]
                                    * activate_diff(x_tmp_hist[4, i-1])
                                    * graph[4, 2]
@@ -227,42 +260,6 @@ def calc_loss(loss, y_pred, y):
 
 def squared_error(y_pred, y):
     return (y_pred - y) ** 2
-
-
-def sigmoid(x):
-    return 1 / (1. + np.exp(-x))
-
-
-def sigmoid_diff(x):
-    return 1 / (np.exp(x/2) + np.exp(-x/2))**2
-
-
-def leaky_relu(x, a=0.01):
-    if x > 0.:
-        return x
-    else:
-        return a * x
-
-
-def leaky_relu_diff(x, a=0.01):
-    if x > 0:
-        return 1
-    else:
-        return a
-
-
-def relu(x):
-    if x > 0.:
-        return x
-    else:
-        return 0.
-
-
-def relu_diff(x):
-    if x > 0.:
-        return 1
-    else:
-        return 0.
 
 
 def make_sample_data(number):
