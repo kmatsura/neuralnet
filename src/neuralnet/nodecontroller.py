@@ -13,4 +13,5 @@ class NetworkGraph():
     def make_graph(self, node_number, edge_number, node_list, edge_list):
 
 class Layer(NetworkGraph):
-    def make_layer(self, )
+    def make_layer(self):
+        pass

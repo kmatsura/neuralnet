@@ -145,7 +145,7 @@ def learing_parameters(graph, node_list, X, y, activate,
         x_output_hist[:, i] = x_output.reshape(nodes_number)
         x_input = x_output  # go next layers
         if i >= hidden_layer:
-            y_use_pred[i-hidden_layer] = x_tmp[(nodes_number-node_list):, 0]
+            y_use_pred[i-hidden_layer] = x_tmp[(nodes_number - node_list[-1]):, 0]
             delta = y_use_pred[i-hidden_layer] - y_use[i-hidden_layer]
             #  update parameters
             pointer = (nodes_number, nodes_number - node_list[-1])
@@ -157,8 +157,7 @@ def learing_parameters(graph, node_list, X, y, activate,
                     string = node_list[-(k+1)]
                     pointer = (pointer[0]-row, pointer[1]-string)
                     graph[pointer[0]:pointer[0] + row, pointer[1]:pointer[1]
-                          + string]\
-                        -= calc_back_prop(node_list, k, alpha, delta, i, pointer)
+                          + string] -= calc_back_prop(node_list, k, alpha, delta, i, pointer)[0]
     
     def calc_back_prop(node_list, k, alpha, delta, i, pointer):
         """
@@ -173,14 +172,7 @@ def learing_parameters(graph, node_list, X, y, activate,
                 if k == 0:
                     update_matrix[r, s] += same * x_output_hist[pointer + s, i-1]
                 if k == 1:
-                    update_matrix[r, s]
-
-                        graph[4, 2] -= same * graph[6, 4] * \
-                activate_diff(
-                    x_tmp_hist[4, i-1]) * x_output_hist[2, i-2]
-            
-        return update_matrix
-                
+                    update_matrix[r, s] += same * x_output_hist[pointer + s, i-1]
             graph[2, 0] -= same * (graph[6, 4]
                                    * activate_diff(x_tmp_hist[4, i-1])
                                    * graph[4, 2]
